@@ -16,6 +16,7 @@ from fairseq.logging import progress_bar
 from fairseq.utils import reset_logging
 from omegaconf import DictConfig
 
+from tasks import SunreferTask
 from utils import checkpoint_utils
 from utils.eval_utils import eval_step, merge_results
 
@@ -71,6 +72,11 @@ def main(cfg: DictConfig, **kwargs):
     )
 
     # loading the dataset should happen after the checkpoint has been loaded so we can give it the saved task config
+    # Add a custom code to modify sunrefer from checkpoint of refcoco.
+    bpe = task.bpe
+    saved_cfg.task._name = 'sunrefer'
+    task = SunreferTask(task.cfg, task.src_dict, task.tgt_dict)
+    task.bpe = bpe
     task.load_dataset(cfg.dataset.gen_subset, task_cfg=saved_cfg.task)
 
     # Move models to GPU
@@ -134,6 +140,9 @@ def cli_main():
     parser.add_argument("--ema-eval", action='store_true', help="Use EMA weights to make evaluation.")
     parser.add_argument("--beam-search-vqa-eval", action='store_true', help="Use beam search for vqa evaluation (faster inference speed but sub-optimal result), if not specified, we compute scores for each answer in the candidate set, which is slower but can obtain best result.")
     args = options.parse_args_and_arch(parser)
+
+    print(args)
+
     cfg = convert_namespace_to_omegaconf(args)
     distributed_utils.call_main(cfg, main, ema_eval=args.ema_eval, beam_search_vqa_eval=args.beam_search_vqa_eval)
 
